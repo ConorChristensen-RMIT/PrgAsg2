@@ -3,14 +3,13 @@
 
 
 int main() {
-    //printf("Starting\n");
-    //create_vsfs();
-    
-    //printf("Write complete\n");
-    //printf("About to load\n");
+    create_vsfs();
+    printf("FS Created.");
     load_vsfs("FS");
-    
+    //write more
+    write_vsfs("FS");
 
+    list("FS");
 
     //allocate_file("Test");
 

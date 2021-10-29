@@ -60,7 +60,7 @@ void write_vsfs(char * filename);
 void list(char * file_name);
 void mkdir(char * FSFilename, char* name);
 void rmdir(char * FSFilename, char* pathname);
-void pretty_print();
+
 
 // Will return a file number
 int allocate_file (char name[NAME_LEN]);

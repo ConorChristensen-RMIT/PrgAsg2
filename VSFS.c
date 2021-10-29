@@ -5,11 +5,11 @@
 #include <time.h>
 #include <math.h>
 
-//Am behind, so far just built the initialising of the VSFS file
-// and some read/write strategies. Mainly these were inspired by some 
-// online examples that were building general file systems,
-// and will require some modifying going into next week.
-// I plan on working on list() as soon as possible
+// Code won't actually run, I keep getting segmentation faults and it is almost
+// like a black box. I have run out of time trying to find the errors and also cannot
+// work out how to run the VSFS executable without "./VSFS". The architecture
+// for the file system is all in place, however.
+//
 struct primary_block pr_bl;
 struct directory *directories;
 struct inode *inodes;
@@ -20,7 +20,7 @@ int main(int argc, char* argv[]){
         list(argv[2]);
     }
     else if (strcmp(argv[1], "copyin")){
-        addFile(argv[2], argv[4], argv[3]);
+        copyin(argv[2], argv[4], argv[3]);
     }
     else if (strcmp(argv[1], "mkdir")){
         mkdir(argv[2], argv[3]);
@@ -96,6 +96,7 @@ void create_vsfs () {
 
 
 void write_vsfs (char * filename) {
+    // Save the state of the running program to the FS
     FILE *file;
     file = fopen(filename, "w+");
     
@@ -113,6 +114,7 @@ void write_vsfs (char * filename) {
 }
 
 void load_vsfs (char * filename) {
+    // Load the FS state into the program
     FILE *file;
     file = fopen(filename, "r");
 
@@ -131,13 +133,10 @@ void load_vsfs (char * filename) {
 }
 
 int allocate_file (char name[NAME_LEN]){
-    
+    // Find a free inode and a free first-block to allocate to an
+    // incoming file.
     int free_inode = get_free_inode();
-    printf("Got free inode\n");
-    
     int free_block = get_free_block();
-
-
     inodes[free_inode].first_block = free_block;
     blocks[free_block].next_block_num = -2;
 
@@ -147,24 +146,8 @@ int allocate_file (char name[NAME_LEN]){
 }
 
 
-void pretty_print(){
-    printf("Primary block info\n");
-    printf("\tnum inodes %d\n", pr_bl.num_inodes);
-    printf("\tnum blocks %d\n", pr_bl.num_blocks);
-    printf("\tsize blocks %d\n", pr_bl.size_blocks);
-
-    printf("inodes\n");
-    int i;
-    for ( i=0 ; i < pr_bl.num_inodes; i++){
-        printf("\tsize: %d block: %d name: %s\n", inodes[i].size, inodes[i].first_block, inodes[i].name);
-    }
-    for ( i=0 ; i < pr_bl.num_blocks; i++){
-        printf("\tblock: %d next_block: %d\n", i, blocks[i].next_block_num);
-    }
-
-}
-
 int get_free_dir_slot(){
+    // Return the index value for the directory
     int val = -1;
     int n;
     for (n = 0; n < pr_bl.max_num_dirs ; n++){
@@ -176,7 +159,9 @@ int get_free_dir_slot(){
     return val;
 }
 
+
 void printInode(int inode_num){
+    //
     struct inode ind = inodes[inode_num];
     int n;
     int linked = 0;
@@ -196,6 +181,7 @@ void printInode(int inode_num){
 }
 
 void listDirContents(int dir_num){
+    if (directories[dir_num].size == -1) {return;}
     int n;
     for (n = 0 ; n < MAX_INODES ; n++){
         if (directories[dir_num].inodes[n] == -1){break;}
@@ -211,7 +197,7 @@ void listDirContents(int dir_num){
 }
 
 
-void addFile(char * FSFile, char * filepath_in, char * filename_ex){
+void copyin(char * FSFile, char * filepath_in, char * filename_ex){
     load_vsfs(FSFile);
     
     // Set original parent directory
@@ -247,7 +233,6 @@ void addFile(char * FSFile, char * filepath_in, char * filename_ex){
     //If no directory with the name exists, exit
     if (p_dir_int == -1){return;}
     
-
     int ind_int = allocate_file(filepath_in);
     //Open the file in binary read
     FILE *file = fopen(filename_ex, "rb");
@@ -257,6 +242,7 @@ void addFile(char * FSFile, char * filepath_in, char * filename_ex){
     // Create a byte buffer
     char *byte;
     long file_len = ftell(file);
+    directories[p_dir_int].size += file_len;
     inodes[ind_int].size = file_len + 1;
     strcpy(inodes[ind_int].attribute, FILE_ATTR);
     inodes[ind_int].time_created = time(NULL);
@@ -438,8 +424,6 @@ void rmdir(char * FSFilename, char * pathname){
     int curr_dir_id = p_dir_int;
 
     delete_dir(curr_dir_id);
-
-    
 }
 
 
@@ -489,13 +473,6 @@ void clear_inode(int inode_num){
     strcpy(inodes[inode_num].name, "");
 }
 
-void shorten_file(int block_num){
-    int next_num = blocks[block_num].next_block_num;
-    if (blocks[block_num].next_block_num >= 0){
-        shorten_file (next_num);
-    }
-    blocks[block_num].next_block_num = -1;
-}
 
 
 int get_free_inode(){
@@ -551,7 +528,7 @@ void def_file_size(int file_id, int size){
         block_num = blocks[block_num].next_block_num;
         num--;
     }
-    shorten_file(block_num);
+    
     blocks[block_num].next_block_num = -2;
 }
 
